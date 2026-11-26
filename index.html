@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#4338ca">
+<link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Bharat News Monitor · भारत समाचार</title>
+<style>
+:root{--bg:#eef2ff;--card:#fff;--tx:#0b1220;--mu:#475569;--bd:#c7d2fe;--st:#f59e0b;--ac:#4f46e5}
+@media(prefers-color-scheme:dark){:root{--bg:#0a0f24;--card:#141b3a;--tx:#f1f5ff;--mu:#a5b4d4;--bd:#2e3a6e;--st:#fbbf24}}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,"Noto Sans Devanagari",sans-serif;background:var(--bg);color:var(--tx)}
+header{background:linear-gradient(120deg,#4338ca,#7c3aed 55%,#db2777);color:#fff;padding:12px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 24px}
+header h1{margin:0;font-size:20px}.sub{font-size:13px;opacity:.92}
+.hr{text-align:right}.clock{font-weight:700;font-size:15px}.me{font-size:13px;opacity:.95}.me a{color:#fff}#inst{--h:38;background:#fff;color:#4338ca;border-color:#fff;font-weight:700;margin-top:6px}
+main{max-width:900px;margin:0 auto;padding:12px}
+.row{display:flex;gap:8px;padding:4px 0;flex-wrap:wrap;align-items:center}
+button,select,input{font:inherit;color:var(--tx);background:var(--card);border:1.5px solid hsl(var(--h,245) 70% 58%);border-radius:999px;padding:5px 14px;cursor:pointer}
+button.on{background:hsl(var(--h,245) 80% 42%);color:#fff;font-weight:600}
+#starbtn{--h:38}#starbtn.on{background:#f59e0b;border-color:#f59e0b;color:#1c1200}
+input{border-radius:10px;width:100%;margin:6px 0;cursor:text;--h:245}select{border-radius:10px;--h:245}
+.warn{background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:10px;margin:8px 0;font-weight:600}
+.note{color:var(--mu);font-size:13px;margin:8px 0}
+.card{background:var(--card);border:1px solid var(--bd);border-left:6px solid hsl(var(--h,220) 75% 52%);border-radius:12px;padding:12px 14px;margin:10px 0;box-shadow:0 1px 3px rgba(30,27,75,.08)}
+.card.star{border-left-color:#f59e0b;background:linear-gradient(90deg,rgba(245,158,11,.16),transparent 45%),var(--card)}
+.card a{color:inherit;text-decoration:none;font-weight:600}.card a:hover{text-decoration:underline}
+.star-m{display:inline-block;background:#f59e0b;color:#1c1200;border-radius:6px;padding:0 6px;margin-right:6px;font-size:14px;font-weight:700}
+.meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--mu);margin-top:6px}
+.pill{background:hsl(var(--h,220) 90% 91%);color:hsl(var(--h,220) 75% 26%);border-radius:999px;padding:1px 10px;font-weight:600}
+.pill.st{background:#ede9fe;color:#5b21b6}
+@media(prefers-color-scheme:dark){.pill{background:hsl(var(--h,220) 45% 24%);color:hsl(var(--h,220) 90% 88%)}.pill.st{background:#4c1d95;color:#ede9fe}.warn{background:#7f1d1d;color:#fee2e2}}
+</style></head><body>
+<header>
+<div><h1>★ Bharat News Monitor · भारत समाचार</h1><div class="sub" id="upd"></div></div>
+<div class="hr"><div class="clock" id="clock"></div><div class="me"><button id="inst" hidden>⬇ Install app</button><br><b>RK</b> · <a href="mailto:gmailrk1@gmail.com">gmailrk1@gmail.com</a></div></div>
+</header>
+<main>
+<div class="row" id="langs"></div>
+<div class="row" id="secs"></div>
+<div class="row"><select id="state"></select><select id="sort"><option value="t">Latest first</option><option value="p">Important first ★</option></select><button id="starbtn">★ Important only</button></div>
+<input id="q" placeholder="Search headline, source… / खोजें">
+<div id="warn"></div><div class="note" id="count"></div><div id="list"></div>
+<div class="row" style="justify-content:center"><button id="more">Show more</button></div>
+<p class="note">Headlines are collected automatically from public news feeds and link to the original publisher. ★ marks stories that are widely covered or carry high-impact keywords – an automated guess, not an editorial judgement.</p>
+</main>
+<script>
+var D,S={lang:"",star:false,sec:"",st:"",q:"",sort:"t",n:100};
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function ago(t){var m=Math.max(0,Math.round((Date.now()/1000-t)/60));return m<60?m+" min ago":m<1440?Math.round(m/60)+" h ago":Math.round(m/1440)+" d ago"}
+function ist(t){return new Date(t*1000).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true,timeZone:"Asia/Kolkata"})}
+function hue(s){var i=D.meta.sectors.indexOf(s);return i<0?220:i*28}
+function clock(){$("clock").textContent=new Date().toLocaleString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true,timeZone:"Asia/Kolkata"})+" IST"}
+function chips(id,opts,key){
+  $(id).innerHTML=opts.map(function(o){return '<button data-v="'+esc(o[0])+'" style="--h:'+o[2]+'" class="'+(S[key]===o[0]?"on":"")+'">'+esc(o[1])+'</button>'}).join("");
+  $(id).onclick=function(e){var b=e.target.closest("button");if(!b)return;S[key]=b.dataset.v;S.n=100;chips(id,opts,key);render()};
+}
+function ok(it){
+  if(S.lang&&it.l!==S.lang)return false;
+  if(S.star&&!it.p)return false;
+  if(S.sec&&it.x.indexOf(S.sec)<0)return false;
+  if(S.st==="__nat"){if(it.st.length)return false}else if(S.st&&it.st.indexOf(S.st)<0)return false;
+  if(S.q&&(it.h+" "+it.s).toLowerCase().indexOf(S.q)<0)return false;
+  return true;
+}
+function render(){
+  var list=D.items.filter(ok);
+  if(S.sort==="p")list.sort(function(a,b){return b.p-a.p||b.sc-a.sc||b.t-a.t});
+  $("count").textContent="Showing "+Math.min(S.n,list.length)+" of "+list.length+" matching · "+D.items.length+" stored";
+  $("list").innerHTML=list.slice(0,S.n).map(function(it){
+    var h=it.x.length?hue(it.x[0]):220;
+    return '<div class="card'+(it.p?" star":"")+'" style="--h:'+h+'"><a href="'+esc(it.u)+'" target="_blank" rel="noopener">'+(it.p?'<span class="star-m" title="Important">★</span>':"")+esc(it.h)+'</a>'+
+    '<div class="meta"><span>'+esc(it.s)+'</span><span>· '+ago(it.t)+'</span>'+(it.n>1?'<span>· '+it.n+' sources</span>':"")+
+    it.st.map(function(s){return '<span class="pill st">'+esc(s)+'</span>'}).join("")+
+    it.x.map(function(s){return '<span class="pill" style="--h:'+hue(s)+'">'+esc(s)+'</span>'}).join("")+'</div></div>';
+  }).join("")||'<p class="note">No stories match these filters.</p>';
+  $("more").style.display=list.length>S.n?"":"none";
+}
+function dt(t){return new Date(t*1000).toLocaleString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:true,timeZone:"Asia/Kolkata"})+" IST"}
+function tick(){
+  var g=D.meta.generated,n=Date.now()/1000,due=g+D.meta.interval;
+  $("upd").innerHTML="<b>Last refreshed:</b> "+dt(g)+"<br>"+(n>due+600?"Next refresh was due ≈ "+ist(due)+" IST – running late":"Next refresh due ≈ "+ist(due)+" IST (every 2 hours)");
+  $("warn").innerHTML=(n>due+1800)?'<div class="warn">Data may be delayed – last refreshed '+dt(g)+'.</div>':"";
+}
+clock();setInterval(clock,1000);
+var dp;window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();dp=e;$("inst").hidden=false});
+$("inst").onclick=function(){if(dp){dp.prompt();dp=null}this.hidden=true};
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
+var lastCheck=0;
+function init(d){
+  chips("langs",[["","All / सभी",245],["hi","हिंदी",20],["en","English",200]],"lang");
+  chips("secs",[["","All sectors",245]].concat(d.meta.sectors.map(function(s){return[s,s,hue(s)]})),"sec");
+  $("state").innerHTML='<option value="">All India / सभी राज्य</option><option value="__nat">National (no state)</option>'+d.meta.states.map(function(s){return'<option>'+esc(s)+'</option>'}).join("");
+  $("state").onchange=function(){S.st=this.value;S.n=100;render()};
+  $("sort").onchange=function(){S.sort=this.value;render()};
+  $("starbtn").onclick=function(){S.star=!S.star;this.className=S.star?"on":"";S.n=100;render()};
+  $("q").oninput=function(){S.q=this.value.trim().toLowerCase();S.n=100;render()};
+  $("more").onclick=function(){S.n+=100;render()};
+  setInterval(tick,30000);
+}
+// "no-cache" = the browser asks GitHub "has it changed?" and gets a tiny 304 reply when it has not
+function load(first){
+  lastCheck=Date.now();
+  fetch("news.json",{cache:"no-cache"}).then(function(r){return r.json()}).then(function(d){
+    var changed=!D||d.meta.generated!==D.meta.generated;
+    D=d;
+    if(first)init(d);
+    if(changed){tick();render()}
+  }).catch(function(){
+    if(first)$("list").innerHTML='<div class="warn">Could not load news.json yet – the first collector run may still be pending.</div>';
+  });
+}
+// Auto-refresh only while the page is open and visible, and only once the scheduled refresh time has passed;
+// after that it re-checks at most every 10 minutes. Before that time it makes no network request at all.
+function maybeRefresh(){
+  if(!D||document.hidden||!navigator.onLine)return;
+  var due=D.meta.generated+D.meta.interval+60;
+  if(Date.now()/1000>=due&&Date.now()-lastCheck>=600000)load(false);
+}
+setInterval(maybeRefresh,60000);
+document.addEventListener("visibilitychange",maybeRefresh);
+load(true);
+</script></body></html>
